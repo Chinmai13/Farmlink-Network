@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FarmLink - Products</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script>
+      const firebaseConfig = {
+  apiKey: "AIzaSyDVlCJQqbVIbWrg3jIynKiFsEB_MfY8SH8",
+  authDomain: "first-project-c8a16.firebaseapp.com",
+  projectId: "first-project-c8a16",
+  storageBucket: "first-project-c8a16.firebasestorage.app",
+  messagingSenderId: "65979514920",
+  appId: "1:65979514920:web:2bc2ed40728719259ff51d",
+};
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+  </script>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; }
+    header { background-color: #4CAF50; color: white; padding: 15px; text-align: center; }
+    h1 { margin: 0; }
+    .products-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; padding: 20px; }
+    .product-item { background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s; }
+    .product-item:hover { transform: scale(1.03); }
+    .product-item img { width: 100%; height: 200px; object-fit: cover; }
+    .product-name { padding: 10px; text-align: center; font-weight: bold; }
+    .product-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; }
+    .product-modal-content { background: white; border-radius: 8px; padding: 20px; width: 90%; max-width: 600px; position: relative; }
+    .close-modal { position: absolute; top: 10px; right: 15px; font-size: 20px; cursor: pointer; color: #888; }
+    .modal-header { display: flex; align-items: center; gap: 10px; }
+    .modal-header img { width: 50px; height: 50px; border-radius: 50%; cursor: pointer; }
+    .modal-body img { width: 100%; height: 250px; object-fit: cover; border-radius: 6px; margin-top: 10px; }
+    .modal-body div { margin-top: 10px; }
+    .back-container { text-align: center; margin-bottom: 30px; }
+    .back-button { margin-top: 40px; padding: 12px 24px; background-color: #4CAF50; color: white; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; }
+    .back-button:hover { background-color: #45a049; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>FarmLink Product Listings</h1>
+</header>
+<div class="products-container"></div>
+<div class="back-container">
+  <button class="back-button" onclick="goBack()">Back to Home</button>
+</div>
+<div id="productModal" class="product-modal">
+  <div class="product-modal-content">
+    <span class="close-modal" onclick="closeModal()">×</span>
+    <div class="modal-header">
+      <img id="farmerPic" class="farmer-image" src="" alt="Farmer Image" onclick="goToProfile()"/>
+      <div>
+        <strong id="modalFarmerName"></strong><br/>
+        <small id="modalLocation"></small>
+      </div>
+    </div>
+    <div class="modal-body">
+      <img id="modalImage" src="" alt="Product Image" />
+      <div><strong>Crop:</strong> <span id="modalProductName"></span></div>
+      <div><strong>Contact:</strong> <span id="modalContactNumber"></span></div>
+      <div><strong>Cost:</strong> <span id="modalCost"></span></div>
+      <div><strong>Reviews:</strong> <div id="modalReview">Loading reviews...</div></div>
+    </div>
+  </div>
+</div>
+<script>
+  let selectedProduct = null;
+  window.addEventListener('DOMContentLoaded', () => {
+    const container = document.querySelector(".products-container");
+    db.collection('products').get()
+      .then((querySnapshot) => {
+        querySnapshot.forEach((doc) => {
+          const product = doc.data();
+          if (product.cropType && product.cropImageData) {
+            const item = document.createElement("div");
+            item.className = "product-item";
+            item.innerHTML = `
+              <img src="${product.cropImageData}" alt="${product.cropType}">
+              <div class="product-name">${product.cropType}</div>
+            `;
+            item.onclick = () => showCustomProduct(product);
+            container.appendChild(item);
+          }
+        });
+        if (!container.hasChildNodes()) {
+          container.innerHTML = "<p>No products available.</p>";
+        }
+      })
+      .catch((error) => { alert('Error loading products: ' + error.message); });
+  });
+  function showCustomProduct(product) {
+    selectedProduct = product;
+    document.getElementById("modalImage").src = product.cropImageData || '';
+    document.getElementById("modalFarmerName").textContent = product.farmerName || 'N/A';
+    document.getElementById("modalLocation").textContent = product.farmLocation || 'N/A';
+    document.getElementById("modalContactNumber").textContent = product.contact || 'N/A';
+    document.getElementById("modalCost").textContent = product.productCost ? `${product.productCost} per kg` : 'N/A';
+    document.getElementById("modalProductName").textContent = product.cropType || 'N/A';
+    document.getElementById("farmerPic").src = product.farmerImage || "https://cdn-icons-png.flaticon.com/512/194/194931.png";
+    db.collection('reviews').where('productName', '==', product.cropType).get()
+      .then((querySnapshot) => {
+        if (!querySnapshot.empty) {
+          const reviewText = querySnapshot.docs.map(doc => `<div class="review-item"><p>${doc.data().reviewText}</p></div>`).join('');
+          document.getElementById("modalReview").innerHTML = reviewText;
+        } else {
+          document.getElementById("modalReview").innerHTML = "No reviews yet.";
+        }
+      })
+      .catch((error) => { alert('Error loading reviews: ' + error.message); });
+    document.getElementById("productModal").style.display = "flex";
+  }
+  function closeModal() { document.getElementById("productModal").style.display = "none"; }
+  function goToProfile() {
+    if (selectedProduct) {
+      localStorage.setItem("selectedFarmer", JSON.stringify(selectedProduct));
+      console.log("Navigating to profile.html");
+      window.location.href = "profile.html";
+    }
+  }
+  function goBack() {
+    console.log("Navigating to home.html");
+    window.location.href = "home.html";
+  }
+  auth.onAuthStateChanged((user) => {
+    if (!user) {
+      console.log("No user, redirecting to login.html");
+      window.location.href = "signin.html";
+    }
+  });
+</script>
+</body>
+</html>

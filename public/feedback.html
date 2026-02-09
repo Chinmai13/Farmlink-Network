@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback - Farmlink Network</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+           const firebaseConfig = {
+  apiKey: "AIzaSyDVlCJQqbVIbWrg3jIynKiFsEB_MfY8SH8",
+  authDomain: "first-project-c8a16.firebaseapp.com",
+  projectId: "first-project-c8a16",
+  storageBucket: "first-project-c8a16.firebasestorage.app",
+  messagingSenderId: "65979514920",
+  appId: "1:65979514920:web:2bc2ed40728719259ff51d",
+};
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+    </script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; text-align: center; background-color: #f4f4f4; }
+        h1 { color: white; padding: 20px 0; background-color: #27ae60; margin: 0; }
+        .feedback-container { padding: 20px; }
+        input, textarea, select { padding: 10px; margin: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 300px; }
+        textarea { height: 100px; }
+        button { padding: 12px 30px; font-size: 18px; font-weight: bold; background-color: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #218c54; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        .reviews-container { margin-top: 20px; }
+        .review-item { background-color: #fff; padding: 10px; margin-bottom: 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
+        .review-item h3 { margin: 0; color: #27ae60; }
+        .review-item p { margin: 5px 0; }
+        .success-message { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); }
+        .success-message h2 { color: #27ae60; margin-bottom: 20px; }
+        .error-message { color: red; margin: 10px 0; display: none; }
+    </style>
+</head>
+<body>
+    <h1>Farmlink Network - Feedback</h1>
+    <div class="feedback-container" id="feedbackForm">
+        <h2>Rate and Review</h2>
+        <input type="text" id="farmerName" placeholder="Farmer's Name" required><br>
+        <select id="productName" required>
+            <option value="" disabled selected>Select a Product</option>
+        </select><br>
+        <textarea id="reviewText" placeholder="Write your review..." required></textarea><br>
+        <p class="error-message" id="errorMessage"></p>
+        <button id="submitButton" onclick="submitFeedback()">Submit</button>
+    </div>
+    <div class="success-message" id="successMessage">
+        <h2>Submitted Successfully!</h2>
+        <button onclick="goToHome()">Back to Home</button>
+    </div>
+    <div class="reviews-container" id="reviewsContainer"></div>
+    <script>
+        const productNameSelect = document.getElementById('productName');
+        const submitButton = document.getElementById('submitButton');
+        const errorMessage = document.getElementById('errorMessage');
+
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+            db.collection('products').get()
+                .then((querySnapshot) => {
+                    const products = [];
+                    querySnapshot.forEach((doc) => {
+                        const product = doc.data();
+                        if (product.createdBy !== user.uid && product.cropType) {
+                            products.push(product.cropType);
+                        }
+                    });
+                    if (products.length === 0) {
+                        productNameSelect.innerHTML = '<option value="" disabled selected>No reviewable products available</option>';
+                        submitButton.disabled = true;
+                        errorMessage.textContent = 'No products available to review.';
+                        errorMessage.style.display = 'block';
+                    } else {
+                        products.forEach((cropType) => {
+                            const option = document.createElement('option');
+                            option.value = cropType;
+                            option.textContent = cropType;
+                            productNameSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch((error) => {
+                    alert('Error loading products: ' + error.message);
+                });
+        });
+
+        function submitFeedback() {
+            const farmerName = document.getElementById('farmerName').value;
+            const productName = document.getElementById('productName').value;
+            const reviewText = document.getElementById('reviewText').value;
+            if (farmerName && productName && reviewText) {
+                db.collection('products').where('cropType', '==', productName).get()
+                    .then((querySnapshot) => {
+                        if (!querySnapshot.empty && querySnapshot.docs[0].data().createdBy !== auth.currentUser.uid) {
+                            const review = {
+                                farmerName,
+                                productName,
+                                reviewText,
+                                userId: auth.currentUser.uid,
+                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                            };
+                            db.collection('reviews').add(review)
+                                .then(() => {
+                                    document.getElementById('feedbackForm').style.display = 'none';
+                                    document.getElementById('successMessage').style.display = 'block';
+                                })
+                                .catch((error) => { alert('Error: ' + error.message); });
+                        } else {
+                            alert('You cannot review your own product or product not found.');
+                        }
+                    })
+                    .catch((error) => {
+                        alert('Error checking product: ' + error.message);
+                    });
+            } else {
+                alert('Please fill in all fields');
+            }
+        }
+
+        function goToHome() { window.location.href = 'index.html'; }
+    </script>
+</body>
+</html>

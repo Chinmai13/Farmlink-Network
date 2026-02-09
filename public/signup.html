@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Farmlink Network</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js" onerror="handleScriptError('firebase-app-compat.js')"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js" onerror="handleScriptError('firebase-auth-compat.js')"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js" onerror="handleScriptError('firebase-firestore-compat.js')"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .container { background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); padding: 30px; width: 80%; max-width: 400px; text-align: center; }
+        h1 { color: #2c3e50; margin: 0; padding-bottom: 20px; border-bottom: 2px solid #27ae60; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        button { width: 100%; padding: 10px; background-color: #27ae60; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; transition: background-color 0.3s; }
+        button:hover { background-color: #2ecc71; }
+        .login-link { color: #3498db; text-decoration: none; font-size: 14px; margin-top: 10px; display: inline-block; }
+        .login-link:hover { color: #2980b9; text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sign Up Page</h1>
+        <input type="text" id="username" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button id="signinButton">Sign Up</button>
+        <a href="signin.html" class="login-link">Already a user? Signin</a>
+    </div>
+    <script>
+        function handleScriptError(scriptName) {
+            console.error(`Failed to load script: ${scriptName}. Check network or URL.`);
+            alert(`Error loading ${scriptName}. Please check your internet connection and try again.`);
+        }
+
+        function initializeFirebase() {
+            try {
+                if (!window.firebase) {
+                    throw new Error('Firebase SDK not loaded');
+                }
+                const firebaseConfig = {
+  apiKey: "AIzaSyDVlCJQqbVIbWrg3jIynKiFsEB_MfY8SH8",
+  authDomain: "first-project-c8a16.firebaseapp.com",
+  projectId: "first-project-c8a16",
+  storageBucket: "first-project-c8a16.firebasestorage.app",
+  messagingSenderId: "65979514920",
+  appId: "1:65979514920:web:2bc2ed40728719259ff51d",
+};
+                firebase.initializeApp(firebaseConfig);
+                const auth = firebase.auth();
+                const db = firebase.firestore();
+
+                document.getElementById('signinButton').addEventListener('click', function() {
+                    const email = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    if (!email || !password) {
+                        alert('Please enter both email and password.');
+                        return;
+                    }
+                    auth.createUserWithEmailAndPassword(email, password)
+                        .then((userCredential) => {
+                            const user = userCredential.user;
+                            db.collection('users').doc(user.uid).set({
+                                email: email,
+                                password: password,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            })
+                            .then(() => {
+                                console.log('User info saved for UID:', user.uid);
+                                window.location.href = 'index.html';
+                            })
+                            .catch((error) => {
+                                console.error('Error saving user info:', error.message, error.stack);
+                                alert('Error saving user info: ' + error.message);
+                            });
+                        })
+                        .catch((error) => {
+                            console.error('Error signing up:', error.message, error.stack);
+                            alert('Error signing up: ' + error.message);
+                        });
+                });
+            } catch (error) {
+                console.error('Initialization error in signin.html:', error.message, error.stack);
+                alert('Failed to initialize Firebase. Please check your Firebase configuration or internet connection.');
+            }
+        }
+
+        // Wait for scripts to load
+        window.addEventListener('load', () => {
+            if (window.firebase) {
+                initializeFirebase();
+            } else {
+                console.error('Firebase SDK failed to load.');
+                alert('Firebase SDK not loaded. Please check your network or script URLs.');
+            }
+        });
+    </script>
+</body>
+</html>

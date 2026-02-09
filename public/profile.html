@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Farmer Profile - FarmLink</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script>
+         const firebaseConfig = {
+  apiKey: "AIzaSyDVlCJQqbVIbWrg3jIynKiFsEB_MfY8SH8",
+  authDomain: "first-project-c8a16.firebaseapp.com",
+  projectId: "first-project-c8a16",
+  storageBucket: "first-project-c8a16.firebasestorage.app",
+  messagingSenderId: "65979514920",
+  appId: "1:65979514920:web:2bc2ed40728719259ff51d",
+};
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+  </script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 0; }
+    header { background-color: #4CAF50; color: white; padding: 15px; text-align: center; }
+    .profile-container { max-width: 800px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .farmer-info { display: flex; align-items: center; gap: 20px; border-bottom: 1px solid #ddd; padding-bottom: 20px; }
+    .farmer-info img { width: 100px; border-radius: 50%; height: 100px; object-fit: cover; }
+    .farmer-details h2 { margin: 0 0 5px; }
+    .products-list { margin-top: 20px; }
+    .product-item { background: #f9f9f9; padding: 15px; margin-bottom: 10px; border-radius: 6px; display: flex; gap: 15px; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .product-item img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; }
+    .product-info { flex: 1; }
+    .product-info h3 { margin: 0 0 5px; }
+    .product-info p { margin: 3px 0; font-size: 14px; }
+    .product-reviews { margin-top: 10px; font-size: 14px; color: #555; }
+    .no-reviews { color: #888; font-style: italic; opacity: 0.7; }
+    .back-button { padding: 12px 24px; margin-top: 20px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; transition: background-color 0.3s; }
+    .back-button:hover { background-color: #45a049; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Farmer Profile</h1>
+</header>
+<div class="profile-container">
+  <div class="farmer-info">
+    <img id="farmerImage" src="" alt="Farmer Image">
+    <div class="farmer-details">
+      <h2 id="farmerName"></h2>
+      <p><strong>Location:</strong> <span id="farmerLocation"></span></p>
+      <p><strong>Contact:</strong> <span id="farmerContact"></span></p>
+    </div>
+  </div>
+  <div class="products-list">
+    <h3>Products/Crops:</h3>
+    <div id="productContainer"></div>
+  </div>
+  <button class="back-button" onclick="window.location.href='products.html'">Back</button>
+</div>
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    const selectedFarmer = JSON.parse(localStorage.getItem("selectedFarmer"));
+    if (selectedFarmer) {
+      document.getElementById("farmerName").textContent = selectedFarmer.farmerName;
+      document.getElementById("farmerLocation").textContent = selectedFarmer.farmLocation;
+      document.getElementById("farmerContact").textContent = selectedFarmer.contact;
+      document.getElementById("farmerImage").src = selectedFarmer.farmerImage || "https://cdn-icons-png.flaticon.com/512/194/194931.png";
+      db.collection('products').where('farmerName', '==', selectedFarmer.farmerName).get()
+        .then((querySnapshot) => {
+          const container = document.getElementById("productContainer");
+          if (!querySnapshot.empty) {
+            querySnapshot.forEach((doc) => {
+              const prod = doc.data();
+              const div = document.createElement("div");
+              div.className = "product-item";
+              div.innerHTML = `
+                <img src="${prod.cropImageData}" alt="${prod.cropType}">
+                <div class="product-info">
+                  <h3>${prod.cropType}</h3>
+                  <p><strong>Cost:</strong> ${prod.productCost} per kg</p>
+                  <div class="product-reviews" id="reviews-${prod.cropType.replace(/\s+/g, '-')}" style="margin-top: 8px;">
+                    <p>Loading reviews...</p>
+                  </div>
+                </div>
+              `;
+              container.appendChild(div);
+              db.collection('reviews').where('productName', '==', prod.cropType).get()
+                .then((reviewSnapshot) => {
+                  const reviewsDiv = document.getElementById(`reviews-${prod.cropType.replace(/\s+/g, '-')}`);
+                  if (!reviewSnapshot.empty) {
+                    const reviews = reviewSnapshot.docs.map(doc => `<p>${doc.data().reviewText}</p>`).join('');
+                    reviewsDiv.innerHTML = reviews;
+                  } else {
+                    reviewsDiv.innerHTML = '<p class="no-reviews">No reviews yet</p>';
+                  }
+                })
+                .catch((error) => {
+                  console.error('Error loading reviews:', error);
+                  document.getElementById(`reviews-${prod.cropType.replace(/\s+/g, '-')}`).innerHTML = '<p class="no-reviews">Error loading reviews</p>';
+                });
+            });
+          } else {
+            container.innerHTML = "<p>This farmer hasn't listed any products yet.</p>";
+          }
+        })
+        .catch((error) => {
+          console.error('Error loading products:', error);
+          document.getElementById("productContainer").innerHTML = "<p>Error loading products.</p>";
+        });
+    } else {
+      document.querySelector(".profile-container").innerHTML = "<p>No farmer selected.</p>";
+    }
+  });
+  auth.onAuthStateChanged((user) => { if (!user) window.location.href = 'signin.html'; });
+</script>
+</body>
+</html>

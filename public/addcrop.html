@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Farmer - FarmLink Network</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+         const firebaseConfig = {
+  apiKey: "AIzaSyDVlCJQqbVIbWrg3jIynKiFsEB_MfY8SH8",
+  authDomain: "first-project-c8a16.firebaseapp.com",
+  projectId: "first-project-c8a16",
+  storageBucket: "first-project-c8a16.firebasestorage.app",
+  messagingSenderId: "65979514920",
+  appId: "1:65979514920:web:2bc2ed40728719259ff51d",
+};
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+    </script>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80'); background-size: cover; background-position: center; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .container { text-align: center; background-color: rgba(255, 255, 255, 0.8); padding: 40px; border-radius: 10px; width: 500px; }
+        h1 { color: #2e7d32; margin-bottom: 30px; }
+        .form-group { margin: 15px 0; text-align: left; }
+        label { display: block; margin-bottom: 5px; color: #333; }
+        input[type="text"], input[type="number"], input[type="file"], input[type="tel"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .btn { padding: 12px 24px; margin: 10px 5px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; transition: background-color 0.3s; }
+        .btn:hover { background-color: #45a049; }
+        #preview { max-width: 200px; max-height: 200px; margin-top: 10px; display: none; }
+        #result { display: none; text-align: center; }
+        #resultImage { max-width: 300px; max-height: 300px; margin: 20px auto; display: block; }
+        #resultDetails { text-align: left; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="title">Add Farmer Information</h1>
+        <form id="farmerForm">
+            <div class="form-group">
+                <label for="cropType">Product Name (Crop Type):</label>
+                <input type="text" id="cropType" name="cropType" required>
+            </div>
+            <div class="form-group">
+                <label for="farmerName">Farmer Name:</label>
+                <input type="text" id="farmerName" name="farmerName" required>
+            </div>
+            <div class="form-group">
+                <label for="farmLocation">Farm Location:</label>
+                <input type="text" id="farmLocation" name="farmLocation" required>
+            </div>
+            <div class="form-group">
+                <label for="productCost">Cost (per kg):</label>
+                <input type="number" id="productCost" name="productCost" required>
+            </div>
+            <div class="form-group">
+                <label for="contact">Contact Number:</label>
+                <input type="tel" id="contact" name="contact" pattern="[0-9]{10}" placeholder="Enter 10-digit number" required>
+            </div>
+            <div class="form-group">
+                <label for="cropImage">Crop Image:</label>
+                <input type="file" id="cropImage" name="cropImage" accept="image/*" required>
+                <img id="preview" src="#" alt="Crop Preview">
+            </div>
+            <div>
+                <button type="submit" class="btn">Next</button>
+                <button type="button" class="btn" onclick="window.location.href='index.html'">Back</button>
+            </div>
+        </form>
+        <div id="result">
+            <img id="resultImage" src="#" alt="Submitted Crop">
+            <div id="resultDetails"></div>
+            <button class="btn" onclick="window.location.href='addcrop.html'">Submit</button>
+        </div>
+    </div>
+    <script>
+        const form = document.getElementById('farmerForm');
+        const imageInput = document.getElementById('cropImage');
+        const preview = document.getElementById('preview');
+        const result = document.getElementById('result');
+        const resultImage = document.getElementById('resultImage');
+        const resultDetails = document.getElementById('resultDetails');
+
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const cropType = document.getElementById('cropType').value;
+            const farmerName = document.getElementById('farmerName').value;
+            const farmLocation = document.getElementById('farmLocation').value;
+            const contact = document.getElementById('contact').value;
+            const productCost = document.getElementById('productCost').value;
+            const cropImageFile = imageInput.files[0];
+
+            if (cropImageFile) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const cropImageData = e.target.result;
+                    const newProduct = {
+                        cropType,
+                        farmerName,
+                        farmLocation,
+                        contact,
+                        productCost,
+                        cropImageData,
+                        createdBy: auth.currentUser.uid,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    db.collection('products').add(newProduct)
+                        .then(() => { window.location.href = 'products.html'; })
+                        .catch((error) => { alert('Error: ' + error.message); });
+                };
+                reader.readAsDataURL(cropImageFile);
+            }
+        });
+
+        auth.onAuthStateChanged((user) => { if (!user) window.location.href = 'login.html'; });
+    </script>
+</body>
+</html>
