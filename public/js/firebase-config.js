@@ -1,8 +1,8 @@
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyDVlCJQqbVIbWrg3jIynKiFsEB_MfY8SH8",
   authDomain: "first-project-c8a16.firebaseapp.com",
   projectId: "first-project-c8a16",
-  storageBucket: "first-project-c8a16.appspot.com",
+  storageBucket: "first-project-c8a16.firebasestorage.app",
   messagingSenderId: "65979514920",
   appId: "1:65979514920:web:2bc2ed40728719259ff51d"
 };

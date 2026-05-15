@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isValidRole(role) {
+      return role in ['farmer', 'buyer'];
+    }
+
+    // users/{uid}
+    // - user can read/update own profile only
+    // - user can create own profile with safe fields
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId)
+                    && request.resource.data.keys().hasOnly([
+                      'name', 'phone', 'email', 'role', 'createdAt'
+                    ])
+                    && isValidRole(request.resource.data.role);
+      allow update: if isOwner(userId)
+                    && request.resource.data.keys().hasOnly([
+                      'name', 'phone', 'email', 'role', 'createdAt', 'lastLogin'
+                    ])
+                    && isValidRole(request.resource.data.role);
+      allow delete: if false;
+    }
+
+    // products/{productId}
+    // - any signed-in user can read products
+    // - only creator can create/update/delete own product
+    match /products/{productId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'cropType', 'farmerName', 'farmLocation', 'contact',
+                      'productCost', 'quantity', 'cropImageData',
+                      'createdBy', 'timestamp'
+                    ]);
+      allow update, delete: if signedIn() && resource.data.createdBy == request.auth.uid;
+    }
+
+    // reviews/{reviewId}
+    // - signed-in users can read/add reviews
+    // - users can edit/delete only their own review
+    match /reviews/{reviewId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'productName', 'rating', 'reviewText', 'userId', 'timestamp'
+                    ]);
+      allow update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
