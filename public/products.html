@@ -7,6 +7,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="js/i18n.js"></script>
   <script>
       const firebaseConfig = {
   apiKey: "AIzaSyDVlCJQqbVIbWrg3jIynKiFsEB_MfY8SH8",
@@ -41,13 +42,17 @@
     .back-button:hover { background-color: #45a049; }
   </style>
 </head>
-<body>
+<body data-i18n-title="title_products">
 <header>
-  <h1>FarmLink Product Listings</h1>
+  <h1 data-i18n="productsHeader">FarmLink Product Listings</h1>
 </header>
+<div style="padding:12px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;background:#fff;">
+  <input id="cropFilter" data-i18n-placeholder="filterByCrop" placeholder="Filter by crop" style="padding:10px;border:1px solid #ccc;border-radius:8px;min-width:220px;" />
+  <input id="locationFilter" data-i18n-placeholder="filterByLocation" placeholder="Filter by location" style="padding:10px;border:1px solid #ccc;border-radius:8px;min-width:220px;" />
+</div>
 <div class="products-container"></div>
 <div class="back-container">
-  <button class="back-button" onclick="goBack()">Back to Home</button>
+  <button class="back-button" onclick="goBack()" data-i18n="backHome">Back to Home</button>
 </div>
 <div id="productModal" class="product-modal">
   <div class="product-modal-content">
@@ -61,77 +66,134 @@
     </div>
     <div class="modal-body">
       <img id="modalImage" src="" alt="Product Image" />
-      <div><strong>Crop:</strong> <span id="modalProductName"></span></div>
-      <div><strong>Contact:</strong> <span id="modalContactNumber"></span></div>
-      <div><strong>Cost:</strong> <span id="modalCost"></span></div>
-      <div><strong>Reviews:</strong> <div id="modalReview">Loading reviews...</div></div>
+      <div><strong data-i18n="crop">Crop:</strong> <span id="modalProductName"></span></div>
+      <div><strong data-i18n="contact">Contact:</strong> <span id="modalContactNumber"></span></div>
+      <div><strong data-i18n="cost">Cost:</strong> <span id="modalCost"></span></div>
+      <div><strong data-i18n="quantity">Quantity:</strong> <span id="modalQty"></span></div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+        <a id="callBtn" style="padding:8px 12px;background:#2e7d32;color:#fff;border-radius:6px;text-decoration:none;" target="_blank" data-i18n="call">Call</a>
+        <a id="waBtn" style="padding:8px 12px;background:#1fa855;color:#fff;border-radius:6px;text-decoration:none;" target="_blank" data-i18n="whatsapp">WhatsApp</a>
+        <button id="shareBtn" style="padding:8px 12px;border:0;border-radius:6px;background:#1565c0;color:#fff;cursor:pointer;" data-i18n="share">Share</button>
+      </div>
+      <div><strong data-i18n="reviews">Reviews:</strong> <div id="modalReview">Loading reviews...</div></div>
     </div>
   </div>
 </div>
 <script>
   let selectedProduct = null;
-  window.addEventListener('DOMContentLoaded', () => {
+  let allProducts = [];
+  let lastFiltered = [];
+
+  function renderProducts(products) {
+    lastFiltered = products;
     const container = document.querySelector(".products-container");
-    db.collection('products').get()
-      .then((querySnapshot) => {
-        querySnapshot.forEach((doc) => {
-          const product = doc.data();
-          if (product.cropType && product.cropImageData) {
-            const item = document.createElement("div");
-            item.className = "product-item";
-            item.innerHTML = `
-              <img src="${product.cropImageData}" alt="${product.cropType}">
-              <div class="product-name">${product.cropType}</div>
-            `;
-            item.onclick = () => showCustomProduct(product);
-            container.appendChild(item);
-          }
-        });
-        if (!container.hasChildNodes()) {
-          container.innerHTML = "<p>No products available.</p>";
-        }
-      })
-      .catch((error) => { alert('Error loading products: ' + error.message); });
-  });
+    container.innerHTML = "";
+    products.forEach((product) => {
+      if (product.cropType && product.cropImageData) {
+        const item = document.createElement("div");
+        item.className = "product-item";
+        item.innerHTML = `
+          <img src="${product.cropImageData}" alt="${product.cropType}">
+          <div class="product-name">${product.cropType}</div>
+        `;
+        item.onclick = () => showCustomProduct(product);
+        container.appendChild(item);
+      }
+    });
+    if (!container.hasChildNodes()) {
+      const p = document.createElement("p");
+      p.textContent = I18n.t("noProducts");
+      container.appendChild(p);
+    }
+  }
+
+  function applyFilters() {
+    const crop = document.getElementById("cropFilter").value.toLowerCase().trim();
+    const location = document.getElementById("locationFilter").value.toLowerCase().trim();
+    const filtered = allProducts.filter((p) =>
+      (!crop || (p.cropType || "").toLowerCase().includes(crop)) &&
+      (!location || (p.farmLocation || "").toLowerCase().includes(location))
+    );
+    renderProducts(filtered);
+  }
+
+  function buildShareMessage(product) {
+    return I18n.t("shareFresh", { crop: product.cropType }) + "\n" +
+      I18n.t("shareLine", { qty: product.quantity || "-", price: product.productCost || "-" }) + "\n" +
+      (product.farmLocation || "") + "\n" +
+      I18n.t("shareContact", { phone: product.contact || "" }) + "\n#Farmlink #DirectFromFarmer";
+  }
+
   function showCustomProduct(product) {
     selectedProduct = product;
     document.getElementById("modalImage").src = product.cropImageData || '';
-    document.getElementById("modalFarmerName").textContent = product.farmerName || 'N/A';
-    document.getElementById("modalLocation").textContent = product.farmLocation || 'N/A';
-    document.getElementById("modalContactNumber").textContent = product.contact || 'N/A';
-    document.getElementById("modalCost").textContent = product.productCost ? `${product.productCost} per kg` : 'N/A';
-    document.getElementById("modalProductName").textContent = product.cropType || 'N/A';
+    document.getElementById("modalFarmerName").textContent = product.farmerName || I18n.t("na");
+    document.getElementById("modalLocation").textContent = product.farmLocation || I18n.t("na");
+    document.getElementById("modalContactNumber").textContent = product.contact || I18n.t("na");
+    document.getElementById("modalCost").textContent = product.productCost
+      ? `${product.productCost} ${I18n.t("perKg")}` : I18n.t("na");
+    document.getElementById("modalQty").textContent = product.quantity
+      ? `${product.quantity} ${I18n.t("kg")}` : I18n.t("na");
+    document.getElementById("modalProductName").textContent = product.cropType || I18n.t("na");
     document.getElementById("farmerPic").src = product.farmerImage || "https://cdn-icons-png.flaticon.com/512/194/194931.png";
+    const phone = (product.contact || "").replace(/\D/g, "");
+    document.getElementById("callBtn").href = `tel:${phone}`;
+    document.getElementById("waBtn").href = `https://wa.me/${phone}`;
+    document.getElementById("shareBtn").onclick = async () => {
+      const msg = buildShareMessage(product);
+      if (navigator.share) {
+        try { await navigator.share({ title: "FarmLink Crop", text: msg }); } catch (_) {}
+      } else {
+        await navigator.clipboard.writeText(msg);
+        alert(I18n.t("shareCopied"));
+      }
+    };
+    document.getElementById("modalReview").textContent = I18n.t("loadingReviews");
     db.collection('reviews').where('productName', '==', product.cropType).get()
       .then((querySnapshot) => {
         if (!querySnapshot.empty) {
           const reviewText = querySnapshot.docs.map(doc => `<div class="review-item"><p>${doc.data().reviewText}</p></div>`).join('');
           document.getElementById("modalReview").innerHTML = reviewText;
         } else {
-          document.getElementById("modalReview").innerHTML = "No reviews yet.";
+          document.getElementById("modalReview").textContent = I18n.t("noReviews");
         }
       })
-      .catch((error) => { alert('Error loading reviews: ' + error.message); });
+      .catch((error) => { alert(I18n.t("errorPrefix") + error.message); });
     document.getElementById("productModal").style.display = "flex";
+    I18n.apply();
   }
+
   function closeModal() { document.getElementById("productModal").style.display = "none"; }
   function goToProfile() {
     if (selectedProduct) {
       localStorage.setItem("selectedFarmer", JSON.stringify(selectedProduct));
-      console.log("Navigating to profile.html");
       window.location.href = "profile.html";
     }
   }
-  function goBack() {
-    console.log("Navigating to home.html");
-    window.location.href = "home.html";
-  }
+  function goBack() { window.location.href = "index.html"; }
+
+  I18n.init();
+  window.addEventListener("farmlink:langchange", () => {
+    renderProducts(lastFiltered.length ? lastFiltered : allProducts);
+    if (selectedProduct) showCustomProduct(selectedProduct);
+  });
+
+  window.addEventListener('DOMContentLoaded', () => {
+    db.collection('products').get()
+      .then((querySnapshot) => {
+        querySnapshot.forEach((doc) => { allProducts.push(doc.data()); });
+        renderProducts(allProducts);
+      })
+      .catch((error) => { alert(I18n.t("errorLoadingProducts") + error.message); });
+
+    document.getElementById("cropFilter").addEventListener("input", applyFilters);
+    document.getElementById("locationFilter").addEventListener("input", applyFilters);
+  });
+
   auth.onAuthStateChanged((user) => {
-    if (!user) {
-      console.log("No user, redirecting to login.html");
-      window.location.href = "signin.html";
-    }
+    if (!user) window.location.href = "signin.html";
   });
 </script>
 </body>
 </html>
+

@@ -7,6 +7,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="js/i18n.js"></script>
     <script>
            const firebaseConfig = {
   apiKey: "AIzaSyDVlCJQqbVIbWrg3jIynKiFsEB_MfY8SH8",
@@ -29,81 +30,106 @@
         button { padding: 12px 30px; font-size: 18px; font-weight: bold; background-color: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; }
         button:hover { background-color: #218c54; }
         button:disabled { background-color: #ccc; cursor: not-allowed; }
-        .reviews-container { margin-top: 20px; }
-        .review-item { background-color: #fff; padding: 10px; margin-bottom: 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
-        .review-item h3 { margin: 0; color: #27ae60; }
-        .review-item p { margin: 5px 0; }
         .success-message { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); }
         .success-message h2 { color: #27ae60; margin-bottom: 20px; }
         .error-message { color: red; margin: 10px 0; display: none; }
     </style>
 </head>
-<body>
-    <h1>Farmlink Network - Feedback</h1>
+<body data-i18n-title="title_feedback">
+    <h1 data-i18n="feedbackPageTitle">Farmlink Network - Feedback</h1>
     <div class="feedback-container" id="feedbackForm">
-        <h2>Rate and Review</h2>
-        <input type="text" id="farmerName" placeholder="Farmer's Name" required><br>
+        <h2 data-i18n="rateReview">Rate and Review</h2>
         <select id="productName" required>
-            <option value="" disabled selected>Select a Product</option>
+            <option value="" disabled selected data-i18n="selectProduct">Select a Product</option>
         </select><br>
-        <textarea id="reviewText" placeholder="Write your review..." required></textarea><br>
+        <select id="rating">
+            <option value="up" data-i18n="thumbsUp">Thumbs Up</option>
+            <option value="down" data-i18n="thumbsDown">Thumbs Down</option>
+        </select><br>
+        <textarea id="reviewText" data-i18n-placeholder="writeReview" placeholder="Write your review..." required></textarea><br>
         <p class="error-message" id="errorMessage"></p>
-        <button id="submitButton" onclick="submitFeedback()">Submit</button>
+        <button id="submitButton" onclick="submitFeedback()" data-i18n="submit">Submit</button>
     </div>
     <div class="success-message" id="successMessage">
-        <h2>Submitted Successfully!</h2>
-        <button onclick="goToHome()">Back to Home</button>
+        <h2 data-i18n="submittedSuccess">Submitted Successfully!</h2>
+        <button onclick="goToHome()" data-i18n="backHome">Back to Home</button>
     </div>
-    <div class="reviews-container" id="reviewsContainer"></div>
     <script>
         const productNameSelect = document.getElementById('productName');
         const submitButton = document.getElementById('submitButton');
         const errorMessage = document.getElementById('errorMessage');
 
-        auth.onAuthStateChanged((user) => {
-            if (!user) {
-                window.location.href = 'login.html';
-                return;
-            }
-            db.collection('products').get()
-                .then((querySnapshot) => {
-                    const products = [];
-                    querySnapshot.forEach((doc) => {
-                        const product = doc.data();
-                        if (product.createdBy !== user.uid && product.cropType) {
-                            products.push(product.cropType);
-                        }
-                    });
-                    if (products.length === 0) {
-                        productNameSelect.innerHTML = '<option value="" disabled selected>No reviewable products available</option>';
-                        submitButton.disabled = true;
-                        errorMessage.textContent = 'No products available to review.';
-                        errorMessage.style.display = 'block';
-                    } else {
-                        products.forEach((cropType) => {
-                            const option = document.createElement('option');
-                            option.value = cropType;
-                            option.textContent = cropType;
-                            productNameSelect.appendChild(option);
+        I18n.init();
+
+        function setProductPlaceholder(msgKey) {
+            productNameSelect.innerHTML = '<option value="" disabled selected>' + I18n.t(msgKey) + '</option>';
+        }
+
+        function loadProducts() {
+            auth.onAuthStateChanged((user) => {
+                if (!user) {
+                    window.location.href = 'signin.html';
+                    return;
+                }
+                db.collection('products').get()
+                    .then((querySnapshot) => {
+                        const products = [];
+                        querySnapshot.forEach((doc) => {
+                            const product = doc.data();
+                            if (product.createdBy !== user.uid && product.cropType) {
+                                products.push(product.cropType);
+                            }
                         });
-                    }
-                })
-                .catch((error) => {
-                    alert('Error loading products: ' + error.message);
-                });
+                        productNameSelect.innerHTML = '';
+                        if (products.length === 0) {
+                            setProductPlaceholder('noReviewableProducts');
+                            submitButton.disabled = true;
+                            errorMessage.textContent = I18n.t('noProductsReview');
+                            errorMessage.style.display = 'block';
+                        } else {
+                            const defaultOpt = document.createElement('option');
+                            defaultOpt.value = '';
+                            defaultOpt.disabled = true;
+                            defaultOpt.selected = true;
+                            defaultOpt.textContent = I18n.t('selectProduct');
+                            productNameSelect.appendChild(defaultOpt);
+                            products.forEach((cropType) => {
+                                const option = document.createElement('option');
+                                option.value = cropType;
+                                option.textContent = cropType;
+                                productNameSelect.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch((error) => {
+                        alert(I18n.t('errorLoadingProducts') + error.message);
+                    });
+            });
+        }
+
+        loadProducts();
+        window.addEventListener('farmlink:langchange', () => {
+            I18n.apply();
+            const hasProducts = productNameSelect.options.length > 1;
+            if (!hasProducts && productNameSelect.options.length === 1) {
+                productNameSelect.options[0].textContent = I18n.t('noReviewableProducts');
+                errorMessage.textContent = I18n.t('noProductsReview');
+            } else if (hasProducts && productNameSelect.options[0].value === '') {
+                productNameSelect.options[0].textContent = I18n.t('selectProduct');
+            }
         });
 
         function submitFeedback() {
-            const farmerName = document.getElementById('farmerName').value;
             const productName = document.getElementById('productName').value;
+            const rating = document.getElementById('rating').value;
             const reviewText = document.getElementById('reviewText').value;
-            if (farmerName && productName && reviewText) {
+            if (productName && reviewText) {
                 db.collection('products').where('cropType', '==', productName).get()
                     .then((querySnapshot) => {
                         if (!querySnapshot.empty && querySnapshot.docs[0].data().createdBy !== auth.currentUser.uid) {
                             const review = {
-                                farmerName,
                                 productName,
+                                rating,
                                 reviewText,
                                 userId: auth.currentUser.uid,
                                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -112,17 +138,18 @@
                                 .then(() => {
                                     document.getElementById('feedbackForm').style.display = 'none';
                                     document.getElementById('successMessage').style.display = 'block';
+                                    I18n.apply();
                                 })
-                                .catch((error) => { alert('Error: ' + error.message); });
+                                .catch((error) => { alert(I18n.t('errorPrefix') + error.message); });
                         } else {
-                            alert('You cannot review your own product or product not found.');
+                            alert(I18n.t('cannotReviewOwn'));
                         }
                     })
                     .catch((error) => {
-                        alert('Error checking product: ' + error.message);
+                        alert(I18n.t('errorPrefix') + error.message);
                     });
             } else {
-                alert('Please fill in all fields');
+                alert(I18n.t('fillReviewFields'));
             }
         }
 

@@ -7,6 +7,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="js/i18n.js"></script>
   <script>
          const firebaseConfig = {
   apiKey: "AIzaSyDVlCJQqbVIbWrg3jIynKiFsEB_MfY8SH8",
@@ -39,79 +40,86 @@
     .back-button:hover { background-color: #45a049; }
   </style>
 </head>
-<body>
+<body data-i18n-title="title_profile">
 <header>
-  <h1>Farmer Profile</h1>
+  <h1 data-i18n="farmerProfile">Farmer Profile</h1>
 </header>
-<div class="profile-container">
+<div class="profile-container" id="profileRoot">
   <div class="farmer-info">
     <img id="farmerImage" src="" alt="Farmer Image">
     <div class="farmer-details">
       <h2 id="farmerName"></h2>
-      <p><strong>Location:</strong> <span id="farmerLocation"></span></p>
-      <p><strong>Contact:</strong> <span id="farmerContact"></span></p>
+      <p><strong data-i18n="location">Location:</strong> <span id="farmerLocation"></span></p>
+      <p><strong data-i18n="contact">Contact:</strong> <span id="farmerContact"></span></p>
     </div>
   </div>
   <div class="products-list">
-    <h3>Products/Crops:</h3>
+    <h3 data-i18n="productsCrops">Products/Crops:</h3>
     <div id="productContainer"></div>
   </div>
-  <button class="back-button" onclick="window.location.href='products.html'">Back</button>
+  <button class="back-button" onclick="window.location.href='products.html'" data-i18n="back">Back</button>
 </div>
 <script>
-  window.addEventListener('DOMContentLoaded', () => {
+  I18n.init();
+
+  function renderProfile() {
+    const root = document.getElementById("profileRoot");
     const selectedFarmer = JSON.parse(localStorage.getItem("selectedFarmer"));
-    if (selectedFarmer) {
-      document.getElementById("farmerName").textContent = selectedFarmer.farmerName;
-      document.getElementById("farmerLocation").textContent = selectedFarmer.farmLocation;
-      document.getElementById("farmerContact").textContent = selectedFarmer.contact;
-      document.getElementById("farmerImage").src = selectedFarmer.farmerImage || "https://cdn-icons-png.flaticon.com/512/194/194931.png";
-      db.collection('products').where('farmerName', '==', selectedFarmer.farmerName).get()
-        .then((querySnapshot) => {
-          const container = document.getElementById("productContainer");
-          if (!querySnapshot.empty) {
-            querySnapshot.forEach((doc) => {
-              const prod = doc.data();
-              const div = document.createElement("div");
-              div.className = "product-item";
-              div.innerHTML = `
-                <img src="${prod.cropImageData}" alt="${prod.cropType}">
-                <div class="product-info">
-                  <h3>${prod.cropType}</h3>
-                  <p><strong>Cost:</strong> ${prod.productCost} per kg</p>
-                  <div class="product-reviews" id="reviews-${prod.cropType.replace(/\s+/g, '-')}" style="margin-top: 8px;">
-                    <p>Loading reviews...</p>
-                  </div>
-                </div>
-              `;
-              container.appendChild(div);
-              db.collection('reviews').where('productName', '==', prod.cropType).get()
-                .then((reviewSnapshot) => {
-                  const reviewsDiv = document.getElementById(`reviews-${prod.cropType.replace(/\s+/g, '-')}`);
-                  if (!reviewSnapshot.empty) {
-                    const reviews = reviewSnapshot.docs.map(doc => `<p>${doc.data().reviewText}</p>`).join('');
-                    reviewsDiv.innerHTML = reviews;
-                  } else {
-                    reviewsDiv.innerHTML = '<p class="no-reviews">No reviews yet</p>';
-                  }
-                })
-                .catch((error) => {
-                  console.error('Error loading reviews:', error);
-                  document.getElementById(`reviews-${prod.cropType.replace(/\s+/g, '-')}`).innerHTML = '<p class="no-reviews">Error loading reviews</p>';
-                });
-            });
-          } else {
-            container.innerHTML = "<p>This farmer hasn't listed any products yet.</p>";
-          }
-        })
-        .catch((error) => {
-          console.error('Error loading products:', error);
-          document.getElementById("productContainer").innerHTML = "<p>Error loading products.</p>";
-        });
-    } else {
-      document.querySelector(".profile-container").innerHTML = "<p>No farmer selected.</p>";
+    if (!selectedFarmer) {
+      root.innerHTML = "<p>" + I18n.t("noFarmerSelected") + "</p>";
+      return;
     }
+    document.getElementById("farmerName").textContent = selectedFarmer.farmerName;
+    document.getElementById("farmerLocation").textContent = selectedFarmer.farmLocation;
+    document.getElementById("farmerContact").textContent = selectedFarmer.contact;
+    document.getElementById("farmerImage").src = selectedFarmer.farmerImage || "https://cdn-icons-png.flaticon.com/512/194/194931.png";
+
+    db.collection('products').where('farmerName', '==', selectedFarmer.farmerName).get()
+      .then((querySnapshot) => {
+        const container = document.getElementById("productContainer");
+        container.innerHTML = "";
+        if (!querySnapshot.empty) {
+          querySnapshot.forEach((doc) => {
+            const prod = doc.data();
+            const div = document.createElement("div");
+            div.className = "product-item";
+            const reviewId = "reviews-" + prod.cropType.replace(/\s+/g, "-");
+            div.innerHTML =
+              '<img src="' + prod.cropImageData + '" alt="' + prod.cropType + '">' +
+              '<div class="product-info">' +
+              '<h3>' + prod.cropType + '</h3>' +
+              '<p><strong>' + I18n.t("costLabel") + '</strong> ' + prod.productCost + ' ' + I18n.t("perKg") + '</p>' +
+              '<div class="product-reviews" id="' + reviewId + '"><p>' + I18n.t("loadingReviews") + '</p></div>' +
+              '</div>';
+            container.appendChild(div);
+            db.collection('reviews').where('productName', '==', prod.cropType).get()
+              .then((reviewSnapshot) => {
+                const reviewsDiv = document.getElementById(reviewId);
+                if (!reviewSnapshot.empty) {
+                  reviewsDiv.innerHTML = reviewSnapshot.docs.map(d => "<p>" + d.data().reviewText + "</p>").join("");
+                } else {
+                  reviewsDiv.innerHTML = '<p class="no-reviews">' + I18n.t("noReviewsYet") + "</p>";
+                }
+              })
+              .catch(() => {
+                document.getElementById(reviewId).innerHTML = '<p class="no-reviews">' + I18n.t("errorLoadingReviews") + "</p>";
+              });
+          });
+        } else {
+          container.innerHTML = "<p>" + I18n.t("noFarmerProducts") + "</p>";
+        }
+      })
+      .catch(() => {
+        document.getElementById("productContainer").innerHTML = "<p>" + I18n.t("errorLoadingProductsShort") + "</p>";
+      });
+  }
+
+  window.addEventListener("farmlink:langchange", () => {
+    I18n.apply();
+    renderProfile();
   });
+
+  window.addEventListener('DOMContentLoaded', renderProfile);
   auth.onAuthStateChanged((user) => { if (!user) window.location.href = 'signin.html'; });
 </script>
 </body>

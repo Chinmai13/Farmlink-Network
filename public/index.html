@@ -6,133 +6,86 @@
   <title>FarmLink Network</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="js/i18n.js"></script>
   <style>
-    body { 
-      margin: 0; 
-      padding: 0; 
-      font-family: Arial, sans-serif; 
-      background-image: url('https://i.pinimg.com/originals/4f/4a/1a/4f4a1a9d7c51499e0f4d28ec5e128022.jpg'); 
-      background-size: cover; 
-      background-position: center; 
-      height: 100vh; 
-      display: flex; 
-      flex-direction: column; 
-      justify-content: center; 
-      align-items: center; 
-    }
-    .container { 
-      text-align: center; 
-      background-color: rgba(255, 255, 255, 0.85); 
-      padding: 40px; 
-      border-radius: 10px; 
-    }
-    h1 { 
-      color: #2e7d32; 
-      margin-bottom: 30px; 
-    }
-    .button-container { 
-      margin: 20px 0; 
-      display: flex; 
-      flex-direction: row; 
-      justify-content: center; 
-      gap: 15px; 
-    }
-    .btn { 
-      padding: 12px 24px; 
-      background-color: #4CAF50; 
-      color: white; 
-      border: none; 
-      border-radius: 5px; 
-      cursor: pointer; 
-      font-size: 16px; 
-      transition: background-color 0.3s; 
-      min-width: 120px; 
-    }
-    .btn:hover { 
-      background-color: #45a049; 
-    }
-    .logout-btn { 
-      margin-top: 20px; 
-      padding: 12px 24px; 
-      background-color: #d32f2f; 
-      color: white; 
-      border: none; 
-      border-radius: 5px; 
-      cursor: pointer; 
-      font-size: 16px; 
-      transition: background-color 0.3s; 
-      min-width: 120px; 
-    }
-    .logout-btn:hover { 
-      background-color: #b71c1c; 
-    }
-    .language-select { 
-      margin-top: 20px; 
-    }
-    select { 
-      padding: 8px; 
-      font-size: 16px; 
-      border-radius: 5px; 
-      cursor: pointer; 
-    }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f5f9f4; min-height: 100vh; display: grid; place-items: center; }
+    .card { width: min(92vw, 560px); background: #fff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); padding: 24px; text-align: center; }
+    h1 { margin: 0 0 8px; color: #1b5e20; }
+    p { color: #444; margin: 0 0 18px; }
+    .user-line { font-size: 14px; color: #666; margin-bottom: 18px; }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn, .logout { border: 0; border-radius: 8px; padding: 12px; font-size: 16px; cursor: pointer; }
+    .btn { background: #2e7d32; color: #fff; }
+    .btn:hover { background: #256628; }
+    .logout { margin-top: 14px; width: 100%; background: #c62828; color: #fff; }
+    .logout:hover { background: #ad2222; }
+    @media (max-width: 560px) { .btn-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
-<body>
-  <div class="container">
-    <h1 id="welcome-text">Welcome to FarmLink Network</h1>
-    <div class="button-container">
-      <button class="btn" id="addCropBtn">Add Crop</button>
-      <button class="btn" id="productsBtn">Products</button>
-      <button class="btn" id="feedbackBtn">Feedback</button>
+<body data-i18n-title="title_home">
+  <main class="card">
+    <h1 data-i18n="appTitle">FarmLink Network</h1>
+    <p data-i18n="tagline">Direct farm to buyer. No middleman.</p>
+    <div class="user-line" id="userLine" data-i18n="loadingAccount">Loading account...</div>
+    <div class="btn-grid">
+      <button class="btn" id="addCropBtn" data-i18n="addCrop">Add Crop</button>
+      <button class="btn" id="productsBtn" data-i18n="viewCrops">View Crops</button>
+      <button class="btn" id="feedbackBtn" data-i18n="feedback">Feedback</button>
+      <button class="btn" id="myProfileBtn" data-i18n="myAccount">My Account</button>
     </div>
-    <div class="language-select">
-      <select id="language" onchange="changeLanguage()">
-        <option value="en" selected>English</option>
-        <option value="hi">Hindi</option>
-        <option value="te">Telugu</option>
-      </select>
-    </div>
-  </div>
-  <button class="logout-btn" id="logoutBtn">Logout</button>
+    <button class="logout" id="logoutBtn" data-i18n="logout">Logout</button>
+  </main>
   <script>
-    try {
-      const firebaseConfig = {
-  apiKey: "AIzaSyDVlCJQqbVIbWrg3jIynKiFsEB_MfY8SH8",
-  authDomain: "first-project-c8a16.firebaseapp.com",
-  projectId: "first-project-c8a16",
-  storageBucket: "first-project-c8a16.firebasestorage.app",
-  messagingSenderId: "65979514920",
-  appId: "1:65979514920:web:2bc2ed40728719259ff51d",
-};
-      firebase.initializeApp(firebaseConfig);
-      const auth = firebase.auth();
+    const firebaseConfig = {
+      apiKey: "AIzaSyDVlCJQqbVIbWrg3jIynKiFsEB_MfY8SH8",
+      authDomain: "first-project-c8a16.firebaseapp.com",
+      projectId: "first-project-c8a16",
+      storageBucket: "first-project-c8a16.firebasestorage.app",
+      messagingSenderId: "65979514920",
+      appId: "1:65979514920:web:2bc2ed40728719259ff51d"
+    };
 
-      const translations = {
-        en: { welcome: "Welcome to FarmLink Network", addCrop: "Add Crop", products: "Products", feedback: "Feedback", logout: "Logout" },
-        hi: { welcome: "फार्मलिंक नेटवर्क में आपका स्वागत है", addCrop: "फसल जोड़ें", products: "उत्पाद", feedback: "प्रतिक्रिया", logout: "लॉगआउट" },
-        te: { welcome: "ఫార్మ్‌లింక్ నెట్‌వర్క్‌కు స్వాగతం", addCrop: "పంటను జోడించండి", products: "ఉత్పత్తులు", feedback: "అభిప్రాయం", logout: "లాగ్ అవుట్" }
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    let userProfile = {};
+
+    function bindActions() {
+      document.getElementById("addCropBtn").onclick = () => window.location.href = "addcrop.html";
+      document.getElementById("productsBtn").onclick = () => window.location.href = "products.html";
+      document.getElementById("feedbackBtn").onclick = () => window.location.href = "feedback.html";
+      document.getElementById("myProfileBtn").onclick = () => {
+        alert(I18n.t("accountInfo", {
+          name: userProfile.name || I18n.t("na"),
+          role: I18n.roleLabel(userProfile.role || "buyer"),
+          phone: userProfile.phone || I18n.t("na")
+        }));
       };
-      function changeLanguage() {
-        const selectedLang = document.getElementById('language').value;
-        document.getElementById('welcome-text').textContent = translations[selectedLang].welcome;
-        document.getElementById('addCropBtn').textContent = translations[selectedLang].addCrop;
-        document.getElementById('productsBtn').textContent = translations[selectedLang].products;
-        document.getElementById('feedbackBtn').textContent = translations[selectedLang].feedback;
-        document.getElementById('logoutBtn').textContent = translations[selectedLang].logout;
-        document.documentElement.lang = selectedLang;
-      }
-      document.getElementById("addCropBtn").addEventListener("click", () => { window.location.href = "addcrop.html"; });
-      document.getElementById("productsBtn").addEventListener("click", () => { window.location.href = "products.html"; });
-      document.getElementById("feedbackBtn").addEventListener("click", () => { window.location.href = "feedback.html"; });
-      document.getElementById("logoutBtn").addEventListener("click", () => {
-        auth.signOut().then(() => { window.location.href = "signin.html"; }).catch((error) => { console.error("Logout error: ", error.message); });
-      });
-      auth.onAuthStateChanged((user) => { 
-        if (!user) window.location.href = "signin.html"; 
-      });
-    } catch (error) {
-      console.error("Firebase initialization failed: ", error.message);
+      document.getElementById("logoutBtn").onclick = () => auth.signOut().then(() => window.location.href = "signin.html");
     }
+
+    function updateUserLine() {
+      const el = document.getElementById("userLine");
+      if (!el.dataset.loaded) {
+        el.textContent = I18n.t("loadingAccount");
+        return;
+      }
+      const name = userProfile.name || auth.currentUser?.email || I18n.t("na");
+      el.textContent = name + " | " + I18n.roleLabel(userProfile.role || "buyer");
+    }
+
+    I18n.init();
+    window.addEventListener("farmlink:langchange", updateUserLine);
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = "signin.html"; return; }
+      const snap = await db.collection("users").doc(user.uid).get();
+      userProfile = snap.exists ? snap.data() : {};
+      document.getElementById("userLine").dataset.loaded = "1";
+      updateUserLine();
+      bindActions();
+    });
   </script>
 </body>
 </html>
